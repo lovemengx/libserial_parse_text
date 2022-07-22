@@ -9,6 +9,7 @@
 * @注意  	All rights reserved
 ******************************************************************************
 */
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include "libserial_parse_text.h"
@@ -26,6 +27,7 @@ typedef struct {
 // 解析器配置信息
 #pragma pack(1)
 typedef struct {
+	char shift; 			// 转换为大写字母(0:不做转换 1:转换为小写字母 2:转换为大写字母)
 	char divide;			// 存储用户配置的分隔字符
 	char ignore;			// 存储用户配置的忽略字符
 }parse_config_t;
@@ -154,6 +156,7 @@ unsigned int libserial_parse_init(libserial_parse_buf_t *spbuf)
 	obj->sta.dqu	= 0x00;
 	obj->cfg.ignore = '\0';
 	obj->cfg.divide = '\n';
+	obj->cfg.shift	= 0x00;
 	obj->buf.buf   	= spbuf->buf;
 	obj->buf.idx   	= 0x00;
 	obj->buf.len   	= 0x00;
@@ -205,6 +208,18 @@ void libserial_parse_set_ignore(libserial_parse_buf_t *spbuf, char ignore)
 }
 
 /*---------------------------------------------------------------------
+*	函数: 	libserial_parse_set_shift
+*	功能:	设置大小写字母转换
+*	参数:	splbuf: 缓冲区  shift: 0:不做转换 1:转换为小写字母 2:转换为大写字母
+*	返回:	无返回值
+*---------------------------------------------------------------------*/
+void libserial_parse_set_shift(libserial_parse_buf_t *spbuf, char shift)
+{
+	parse_object_t *obj = get_parse_object(spbuf);
+	obj->cfg.shift = shift;
+}
+
+/*---------------------------------------------------------------------
 *	函数: 	libserial_parse_text
 *	功能:	解析以指定符号分隔或跳过的文本
 *	参数:	splbuf: 缓冲区  indata: 输入数据
@@ -215,10 +230,12 @@ unsigned int libserial_parse_text(libserial_parse_buf_t *spbuf, char indata)
 {
 	parse_object_t *obj = get_parse_object(spbuf);
 
+	// 对数据进行预处理
 	if(libserial_parse_preprocess(obj, indata) == 1){
 		return 0;
 	}
 	
+	// 匹配分隔符
 	if(obj->cfg.divide == indata){
 		obj->buf.len = obj->buf.idx;
 		obj->buf.idx = 0;
@@ -226,12 +243,19 @@ unsigned int libserial_parse_text(libserial_parse_buf_t *spbuf, char indata)
 		return obj->buf.len;
 	}
 	
+	// 大小写数据转换
+	if(LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift || LIBSERIAL_PARSE_SHIFT_UPPER == obj->cfg.shift){
+		indata = (LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift) ? tolower(indata) : toupper(indata);
+	}
+
+	// 复制数据
 	if(obj->buf.idx < obj->buf.space - 1){
 		obj->buf.buf[obj->buf.idx+1] = '\0';
 		obj->buf.buf[obj->buf.idx++] = indata;
 		obj->buf.len = obj->buf.idx;
 	}
 	
+	// 长度检查
 	if(obj->buf.idx >= obj->buf.space - 1){
 		obj->buf.idx = 0;
 		obj->sta.dqu = 0;
@@ -252,6 +276,7 @@ unsigned int libserial_parse_text_nl(libserial_parse_buf_t *spbuf, char indata)
 {
 	parse_object_t *obj = get_parse_object(spbuf);
 
+	// 检查换行字符
 	if('\n' == indata)
 	{
 		if(obj->buf.idx && '\r' == obj->buf.buf[obj->buf.idx-1]){
@@ -263,12 +288,19 @@ unsigned int libserial_parse_text_nl(libserial_parse_buf_t *spbuf, char indata)
 		return obj->buf.len;
 	}
 	
+	// 大小写数据转换
+	if(LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift || LIBSERIAL_PARSE_SHIFT_UPPER == obj->cfg.shift){
+		indata = (LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift) ? tolower(indata) : toupper(indata);
+	}
+
+	// 拷贝数据
 	if(obj->buf.idx < obj->buf.space - 1){
 		obj->buf.buf[obj->buf.idx+1] = '\0';
 		obj->buf.buf[obj->buf.idx++] = indata;
 		obj->buf.len = obj->buf.idx;
 	}
 	
+	//长度检查
 	if(obj->buf.idx >= obj->buf.space - 1){
 		obj->buf.idx = 0;
 		return obj->buf.len;

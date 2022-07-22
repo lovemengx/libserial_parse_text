@@ -22,6 +22,10 @@ typedef struct{
 	unsigned int total;			// 缓存大小, 标明该内存空间的总长度
 }libserial_parse_buf_t;
 
+#define LIBSERIAL_PARSE_SHIFT_NORMAL		0		// 不转换
+#define LIBSERIAL_PARSE_SHIFT_LOWER 		1		// 转换为小写字母
+#define LIBSERIAL_PARSE_SHIFT_UPPER 		2		// 转换为大写字母
+
 /*---------------------------------------------------------------------
 *	函数: 	libserial_parse_create
 *	功能:	使用接口内部申请指定可用大小的空间(包含内部数据结构所用空间)
@@ -80,6 +84,14 @@ void libserial_parse_set_divide(libserial_parse_buf_t *spbuf, char divide);
 *	备注:	双引号内的字符不会受此限制
 *---------------------------------------------------------------------*/
 void libserial_parse_set_ignore(libserial_parse_buf_t *spbuf, char ignore);
+
+/*---------------------------------------------------------------------
+*	函数: 	libserial_parse_set_shift
+*	功能:	设置大小写字母转换
+*	参数:	splbuf: 缓冲区  shift: 0:不做转换 1:转换为小写字母 2:转换为大写字母
+*	返回:	无返回值
+*---------------------------------------------------------------------*/
+void libserial_parse_set_shift(libserial_parse_buf_t *spbuf, char shift);
 
 /*---------------------------------------------------------------------
 *	函数: 	libserial_parse_text
