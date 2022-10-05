@@ -63,7 +63,7 @@ static inline parse_object_t *get_parse_object(libserial_parse_buf_t *spbuf)
 *	函数: 	libserial_parse_preprocess
 *	功能:	对数据进行预处理
 *	参数:	obj: 解析器对象		indata: 输入数据
-*	返回:	缓冲区描述信息
+*	返回:	0:数据有效可以存储		1:数据可以被忽略
 *---------------------------------------------------------------------*/
 static inline int libserial_parse_preprocess(parse_object_t *obj, char indata)
 {
@@ -84,6 +84,23 @@ static inline int libserial_parse_preprocess(parse_object_t *obj, char indata)
 	}
 
 	return 0;
+}
+
+/*---------------------------------------------------------------------
+*	函数: 	libserial_parse_shift_convert
+*	功能:	对数据根据配置进行大小写转换
+*	参数:	obj: 解析器对象		indata: 输入数据
+*	返回:	被转换后的数据
+*	备注:	未启用转换功能或双引号内的字符不进行转换
+*---------------------------------------------------------------------*/
+static char libserial_parse_shift_convert(parse_object_t* obj, char indata)
+{
+	// 大小写数据转换(双引号内的字符不进行转换)
+	if (LIBSERIAL_PARSE_SHIFT_NORMAL != obj->cfg.shift && !obj->sta.dqu) {
+		indata = (LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift) ? tolower(indata) : toupper(indata);
+	}
+
+	return indata;
 }
 
 /*---------------------------------------------------------------------
@@ -242,11 +259,9 @@ unsigned int libserial_parse_text(libserial_parse_buf_t *spbuf, char indata)
 		obj->sta.dqu = 0;
 		return obj->buf.len;
 	}
-	
-	// 大小写数据转换
-	if(LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift || LIBSERIAL_PARSE_SHIFT_UPPER == obj->cfg.shift){
-		indata = (LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift) ? tolower(indata) : toupper(indata);
-	}
+
+	// 大小写转换检查
+	indata = libserial_parse_shift_convert(obj, indata);
 
 	// 复制数据
 	if(obj->buf.idx < obj->buf.space - 1){
@@ -285,13 +300,13 @@ unsigned int libserial_parse_text_nl(libserial_parse_buf_t *spbuf, char indata)
 		}
 		obj->buf.len = obj->buf.idx;
 		obj->buf.idx = 0;
+		obj->sta.dqu = 0;
 		return obj->buf.len;
 	}
-	
-	// 大小写数据转换
-	if(LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift || LIBSERIAL_PARSE_SHIFT_UPPER == obj->cfg.shift){
-		indata = (LIBSERIAL_PARSE_SHIFT_LOWER == obj->cfg.shift) ? tolower(indata) : toupper(indata);
-	}
+
+	// 预处理和大小写检查转换
+	libserial_parse_preprocess(obj, indata);
+	indata = libserial_parse_shift_convert(obj, indata);
 
 	// 拷贝数据
 	if(obj->buf.idx < obj->buf.space - 1){
@@ -303,6 +318,7 @@ unsigned int libserial_parse_text_nl(libserial_parse_buf_t *spbuf, char indata)
 	//长度检查
 	if(obj->buf.idx >= obj->buf.space - 1){
 		obj->buf.idx = 0;
+		obj->sta.dqu = 0;
 		return obj->buf.len;
 	}
 	

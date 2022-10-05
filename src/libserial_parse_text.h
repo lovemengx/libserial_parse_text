@@ -90,6 +90,7 @@ void libserial_parse_set_ignore(libserial_parse_buf_t *spbuf, char ignore);
 *	功能:	设置大小写字母转换
 *	参数:	splbuf: 缓冲区  shift: 0:不做转换 1:转换为小写字母 2:转换为大写字母
 *	返回:	无返回值
+*	备注:	双引号内的字符不会被转换
 *---------------------------------------------------------------------*/
 void libserial_parse_set_shift(libserial_parse_buf_t *spbuf, char shift);
 
